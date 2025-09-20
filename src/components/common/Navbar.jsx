@@ -1,6 +1,6 @@
 import React from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useAuth } from "../contexts/AuthContext";
+import { useAuth } from "../../contexts/AuthContext";
 
 const Navbar = () => {
   const { user, logout } = useAuth();
@@ -17,7 +17,9 @@ const Navbar = () => {
 
   return (
     <nav className="bg-gradient-to-r from-blue-600 via-blue-700 to-blue-800 text-white shadow-xl border-b border-blue-500/20 sticky top-0 z-50 backdrop-blur-lg">
-      <div className="w-full px-0 py-4">  // ← Remove horizontal padding
+      <div className="w-full px-0 py-4">
+        {" "}
+        // ← Remove horizontal padding
         <div className="flex justify-between items-center">
           {/* Logo and Brand */}
           <div className="flex items-center space-x-4">

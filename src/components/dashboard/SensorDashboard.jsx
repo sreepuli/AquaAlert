@@ -8,7 +8,7 @@ import {
   onSnapshot,
   where,
 } from "firebase/firestore";
-import { useLanguage } from "../contexts/LanguageContext";
+import { useLanguage } from "../../contexts/LanguageContext";
 import SensorTestPanel from "./SensorTestPanel";
 
 // ==================== UTILITY FUNCTIONS ====================
