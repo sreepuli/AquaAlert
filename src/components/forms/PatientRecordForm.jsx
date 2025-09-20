@@ -4,7 +4,7 @@ import {
   COMMON_SYMPTOMS,
   WATER_SOURCES,
   WATER_TREATMENTS,
-} from "../services/patientService";
+} from "../../services/patientService";
 import { useAuth } from "../../contexts/AuthContext";
 
 const PatientRecordForm = ({ onSubmit, onCancel }) => {

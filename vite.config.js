@@ -25,7 +25,7 @@ export default defineConfig({
           ],
           'auth-components': [
             './src/pages/AuthPage.jsx',
-            './src/components/RequireAuth.jsx',
+            './src/components/common/RequireAuth.jsx',
             './src/contexts/AuthContext.jsx'
           ]
         }

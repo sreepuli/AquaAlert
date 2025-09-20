@@ -1,5 +1,5 @@
 import React, { useState, useEffect, memo } from "react";
-import { db } from "../firebase";
+import { db } from "../../firebase";
 import {
   collection,
   query,
@@ -9,7 +9,6 @@ import {
   where,
 } from "firebase/firestore";
 import { useLanguage } from "../../contexts/LanguageContext";
-import SensorTestPanel from "./SensorTestPanel";
 
 // ==================== UTILITY FUNCTIONS ====================
 
@@ -663,8 +662,10 @@ const SensorDashboard = () => {
       {activeTab === "sensors" && renderSensorsTab()}
       {activeTab === "alerts" && renderAlertsTab()}
       {activeTab === "test" && (
-        <div>
-          <SensorTestPanel />
+        <div className="text-center py-12">
+          <p className="text-gray-500">
+            Sensor testing features coming soon...
+          </p>
         </div>
       )}
     </div>

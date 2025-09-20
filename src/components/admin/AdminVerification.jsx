@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from "react";
-import { db } from "../firebase";
-import { 
-  collection, 
-  getDocs, 
-  query, 
-  where, 
-  orderBy, 
-  updateDoc, 
-  doc, 
-  onSnapshot 
+import { db } from "../../firebase";
+import {
+  collection,
+  getDocs,
+  query,
+  where,
+  orderBy,
+  updateDoc,
+  doc,
+  onSnapshot,
 } from "firebase/firestore";
 
 const AdminVerification = () => {
@@ -26,19 +26,21 @@ const AdminVerification = () => {
     try {
       setLoading(true);
       const pendingQuery = query(
-        collection(db, "users"), 
+        collection(db, "users"),
         where("verificationStatus", "==", "pending"),
         where("role", "==", "official"),
         orderBy("createdAt", "desc")
       );
-      
+
       const snapshot = await getDocs(pendingQuery);
-      const verifications = snapshot.docs.map(doc => ({
+      const verifications = snapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
-        submittedAt: doc.data().createdAt?.toDate?.()?.toISOString() || new Date().toISOString()
+        submittedAt:
+          doc.data().createdAt?.toDate?.()?.toISOString() ||
+          new Date().toISOString(),
       }));
-      
+
       setPendingVerifications(verifications);
     } catch (error) {
       console.error("Error fetching pending verifications:", error);
@@ -49,17 +51,19 @@ const AdminVerification = () => {
 
   const setupRealTimeListener = () => {
     const pendingQuery = query(
-      collection(db, "users"), 
+      collection(db, "users"),
       where("verificationStatus", "==", "pending"),
       where("role", "==", "official"),
       orderBy("createdAt", "desc")
     );
-    
+
     const unsubscribe = onSnapshot(pendingQuery, (snapshot) => {
-      const verifications = snapshot.docs.map(doc => ({
+      const verifications = snapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
-        submittedAt: doc.data().createdAt?.toDate?.()?.toISOString() || new Date().toISOString()
+        submittedAt:
+          doc.data().createdAt?.toDate?.()?.toISOString() ||
+          new Date().toISOString(),
       }));
       setPendingVerifications(verifications);
       setLoading(false);
