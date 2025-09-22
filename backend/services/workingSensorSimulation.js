@@ -13,6 +13,10 @@ class WorkingSensorSimulation {
     this.recentReadings = [];
     this.alerts = [];
     
+    // Email throttling - 5 minutes between emails for same sensor/alert type
+    this.lastEmailSent = new Map(); // Key: sensorId-alertType, Value: timestamp
+    this.emailCooldownMinutes = 5; // 5 minutes cooldown
+    
     // Initialize Firebase
     this.initializeFirebase();
     
@@ -493,8 +497,23 @@ class WorkingSensorSimulation {
       
       console.log(`⚠️ ${alertType.toUpperCase()} Alert detected for ${reading.sensorId}:`, alertDetails);
       
-      // Send email alert
-      await this.sendEmailAlert(alertType, reading, alertDetails);
+      // Check email throttling - only send email if enough time has passed
+      const emailKey = `${reading.sensorId}-${alertType}`;
+      const now = new Date();
+      const lastEmailTime = this.lastEmailSent.get(emailKey);
+      
+      const shouldSendEmail = !lastEmailTime || 
+        (now - lastEmailTime) >= (this.emailCooldownMinutes * 60 * 1000);
+      
+      if (shouldSendEmail) {
+        // Send email alert
+        await this.sendEmailAlert(alertType, reading, alertDetails);
+        this.lastEmailSent.set(emailKey, now);
+        console.log(`📧 Email sent for ${alertType} alert from ${reading.sensorId}`);
+      } else {
+        const minutesLeft = this.emailCooldownMinutes - Math.floor((now - lastEmailTime) / (60 * 1000));
+        console.log(`⏰ Email throttled for ${reading.sensorId} ${alertType} alert. Next email in ${minutesLeft} minutes.`);
+      }
       
       // Store alert in database/memory
       const alertData = {
@@ -505,7 +524,8 @@ class WorkingSensorSimulation {
         severity: alertType,
         status: 'active',
         alerts: alertDetails,
-        readings: reading.readings
+        readings: reading.readings,
+        emailSent: shouldSendEmail
       };
       
       if (this.db) {

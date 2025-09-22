@@ -530,6 +530,26 @@ const SensorDashboard = () => {
             >
               ▶️ Start Simulation
             </button>
+            <button
+              onClick={async () => {
+                try {
+                  const response = await fetch(
+                    `${API_BASE_URL}/api/sensors/simulation/stop`,
+                    {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                    }
+                  );
+                  const result = await response.json();
+                  console.log("Simulation stopped:", result);
+                } catch (error) {
+                  console.error("Failed to stop simulation:", error);
+                }
+              }}
+              className="px-3 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700 transition-all duration-200 ease-in-out transform hover:scale-105 active:scale-95 shadow-sm hover:shadow-md"
+            >
+              ⏹️ Stop Simulation
+            </button>
           </div>
         </div>
         <div className="text-sm text-gray-500">
