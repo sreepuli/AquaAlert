@@ -4,7 +4,6 @@ import Navbar from "./components/common/Navbar";
 import AuthPage from "./pages/AuthPage";
 import HomePage from "./pages/HomePage";
 import RequireAuth from "./components/common/RequireAuth";
-import TestDashboard from "./TestDashboard";
 
 // Direct imports instead of lazy loading
 import AshaDashboard from "./dashboards/AshaDashboard";
