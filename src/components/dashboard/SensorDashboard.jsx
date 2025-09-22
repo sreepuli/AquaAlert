@@ -530,6 +530,33 @@ const SensorDashboard = () => {
             >
               ▶️ Start Simulation
             </button>
+            <button
+              onClick={async () => {
+                try {
+                  console.log("Testing email system...");
+                  const response = await fetch(
+                    `${API_BASE_URL}/api/test/email`,
+                    {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                    }
+                  );
+                  const result = await response.json();
+                  console.log("Email test result:", result);
+                  alert(
+                    result.success
+                      ? `✅ Email test successful! Sent ${result.emailsSent} emails.`
+                      : `❌ Email test failed: ${result.message}`
+                  );
+                } catch (error) {
+                  console.error("Email test failed:", error);
+                  alert("❌ Email test failed. Check console for details.");
+                }
+              }}
+              className="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+            >
+              📧 Test Email
+            </button>
           </div>
         </div>
         <div className="text-sm text-gray-500">
