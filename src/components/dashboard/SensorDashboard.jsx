@@ -299,7 +299,7 @@ const SensorDashboard = () => {
   const fetchFromAPI = async () => {
     try {
       // Fetch sensors
-      const sensorsResponse = await fetch("http://localhost:3001/api/sensors");
+      const sensorsResponse = await fetch(`${API_BASE_URL}/api/sensors`);
       const sensorsData = await sensorsResponse.json();
 
       if (sensorsData.success) {
@@ -318,7 +318,7 @@ const SensorDashboard = () => {
         for (const sensor of sensorsData.data || []) {
           try {
             const readingsResponse = await fetch(
-              `http://localhost:3001/api/sensors/${sensor.id}/readings?limit=10`
+              `${API_BASE_URL}/api/sensors/${sensor.id}/readings?limit=10`
             );
             const readings = await readingsResponse.json();
             if (readings.success) {
@@ -335,9 +335,7 @@ const SensorDashboard = () => {
       }
 
       // Fetch alerts
-      const alertsResponse = await fetch(
-        "http://localhost:3001/api/alerts?limit=20"
-      );
+      const alertsResponse = await fetch(`${API_BASE_URL}/api/alerts?limit=20`);
       const alertsData = await alertsResponse.json();
       if (alertsData.success) {
         setAlerts(alertsData.data || []);
@@ -514,7 +512,7 @@ const SensorDashboard = () => {
               onClick={async () => {
                 try {
                   const response = await fetch(
-                    "http://localhost:3001/api/sensors/simulation/start",
+                    `${API_BASE_URL}/api/sensors/simulation/start`,
                     {
                       method: "POST",
                       headers: { "Content-Type": "application/json" },
