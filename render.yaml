@@ -1,0 +1,57 @@
+services:
+  # Backend Service with Working Simulation
+  - type: web
+    name: aquaalert-backend
+    env: node
+    buildCommand: cd backend && npm install
+    startCommand: cd backend && node server-working.js
+    plan: starter
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3001
+      - key: FRONTEND_URL
+        fromService:
+          type: web
+          name: aquaalert-frontend
+          property: url
+      - key: CORS_ORIGIN
+        fromService:
+          type: web
+          name: aquaalert-frontend
+          property: url
+      - key: DEMO_MODE
+        value: "true"
+      - key: EMAIL_USER
+        sync: false
+      - key: EMAIL_PASS
+        sync: false
+      - key: GOVERNMENT_EMAILS
+        value: "srilakshmipulisri@gmail.com,sreepuli24@gmail.com,manidweep2005@gmail.com"
+      - key: FIREBASE_PROJECT_ID
+        sync: false
+      - key: FIREBASE_PRIVATE_KEY
+        sync: false
+      - key: FIREBASE_CLIENT_EMAIL
+        sync: false
+
+  # Frontend Service
+  - type: web
+    name: aquaalert-frontend
+    env: node
+    buildCommand: npm install && npm run build
+    startCommand: npm run preview -- --host 0.0.0.0 --port $PORT
+    plan: starter
+    staticPublishPath: ./dist
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: VITE_API_URL
+        fromService:
+          type: web
+          name: aquaalert-backend
+          property: url
+      - key: VITE_ENVIRONMENT
+        value: production

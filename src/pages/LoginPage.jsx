@@ -1,30 +1,35 @@
 import React, { useState } from "react";
-import { signInWithEmailAndPassword } from "firebase/auth";
 import { useNavigate } from "react-router-dom";
-import { auth } from "../firebase";
+import { useAuth } from "../contexts/AuthContext";
 
 const LoginPage = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const { login } = useAuth();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
-    if (!role) {
-      setError("Please select your role.");
-      return;
-    }
+    setLoading(true);
+
     try {
-      await signInWithEmailAndPassword(auth, email, password);
-      localStorage.setItem("userRole", role);
-      if (role === "asha") navigate("/asha-dashboard");
-      else if (role === "community") navigate("/community-dashboard");
-      else if (role === "official") navigate("/official-dashboard");
+      const result = await login(email, password);
+      if (result.success) {
+        // Navigate based on the user's role from Firestore
+        const userRole = result.user.role;
+        if (userRole === "asha") navigate("/asha-dashboard");
+        else if (userRole === "community") navigate("/community-dashboard");
+        else if (userRole === "official") navigate("/official-dashboard");
+        else navigate("/community-dashboard"); // Default fallback
+      }
     } catch (err) {
-      setError("Login failed. Check your credentials.");
+      console.error("Login error:", err);
+      setError(err.message || "Login failed. Check your credentials.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -40,6 +45,7 @@ const LoginPage = () => {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
+            disabled={loading}
           />
           <input
             type="password"
@@ -48,24 +54,15 @@ const LoginPage = () => {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
+            disabled={loading}
           />
-          <select
-            className="w-full px-3 py-2 border rounded"
-            value={role}
-            onChange={(e) => setRole(e.target.value)}
-            required
-          >
-            <option value="">Select Role</option>
-            <option value="asha">ASHA Worker</option>
-            <option value="community">Community Member</option>
-            <option value="official">Government Official</option>
-          </select>
           {error && <div className="text-red-600 text-sm">{error}</div>}
           <button
             type="submit"
-            className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700"
+            className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 disabled:bg-blue-400"
+            disabled={loading}
           >
-            Login
+            {loading ? "Logging in..." : "Login"}
           </button>
         </form>
       </div>

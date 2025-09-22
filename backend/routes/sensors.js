@@ -1,29 +1,23 @@
 import express from 'express';
 import DemoSensorSimulation from '../services/demoSensorSimulation.js';
+import WorkingSensorSimulation from '../services/workingSensorSimulation.js';
 import { body, validationResult } from 'express-validator';
 
 const router = express.Router();
 
-// Initialize sensor simulation (use demo if Firebase not available)
+// Initialize sensor simulation
 let sensorSimulation = null;
 
 // Helper function to ensure sensor simulation is initialized
 const initializeSensorSimulation = async () => {
   if (!sensorSimulation) {
-    // Use demo simulation if in demo mode or Firebase not configured
-    if (process.env.DEMO_MODE === 'true') {
-      console.log('🎮 Using Demo Sensor Simulation');
+    try {
+      console.log('🔥 Using Working Sensor Simulation with real sensor data');
+      sensorSimulation = new WorkingSensorSimulation();
+    } catch (error) {
+      console.log('⚠️ Working simulation failed, falling back to demo');
+      console.log('Error:', error.message);
       sensorSimulation = new DemoSensorSimulation();
-    } else {
-      try {
-        console.log('🔥 Attempting to use Firebase Sensor Simulation');
-        const { default: SensorSimulation } = await import('../services/sensorSimulation.js');
-        sensorSimulation = new SensorSimulation();
-      } catch (error) {
-        console.log('⚠️ Firebase not available, falling back to Demo Sensor Simulation');
-        console.log('Error:', error.message);
-        sensorSimulation = new DemoSensorSimulation();
-      }
     }
   }
   return sensorSimulation;
@@ -42,7 +36,6 @@ router.get('/sensors/env-test', (req, res) => {
 // Debug endpoint to check simulation type
 router.get('/sensors/simulation/debug', async (req, res) => {
   try {
-    console.log('🐛 Debug: DEMO_MODE =', process.env.DEMO_MODE);
     const simulation = await initializeSensorSimulation();
     console.log('🐛 Debug: Simulation class =', simulation.constructor.name);
     console.log('🐛 Debug: Available methods =', Object.getOwnPropertyNames(Object.getPrototypeOf(simulation)));
@@ -50,9 +43,11 @@ router.get('/sensors/simulation/debug', async (req, res) => {
     res.json({
       success: true,
       data: {
-        demoMode: process.env.DEMO_MODE,
         simulationClass: simulation.constructor.name,
-        availableMethods: Object.getOwnPropertyNames(Object.getPrototypeOf(simulation))
+        availableMethods: Object.getOwnPropertyNames(Object.getPrototypeOf(simulation)),
+        simulationStatus: simulation.getSimulationStatus(),
+        sensors: simulation.getDemoSensors(),
+        recentReadings: simulation.getDemoReadings(null, 3)
       }
     });
   } catch (error) {
@@ -217,34 +212,14 @@ router.get('/sensors', async (req, res) => {
   try {
     const simulation = await initializeSensorSimulation();
     
-    if (process.env.DEMO_MODE === 'true') {
-      // Demo mode - return simulated sensors
-      const sensors = simulation.getDemoSensors();
-      return res.json({
-        success: true,
-        data: sensors,
-        total: sensors.length,
-        mode: 'demo'
-      });
-    }
-    
-    // Firebase mode
-    const { db } = await import('../firebase-admin.js');
-    const sensorsSnapshot = await db.collection('sensors').get();
-    
-    const sensors = [];
-    sensorsSnapshot.forEach(doc => {
-      sensors.push({
-        id: doc.id,
-        ...doc.data()
-      });
-    });
+    // Use working simulation or demo sensors
+    const sensors = simulation.getDemoSensors();
     
     res.json({
       success: true,
       data: sensors,
       total: sensors.length,
-      mode: 'firebase'
+      mode: simulation.constructor.name === 'WorkingSensorSimulation' ? 'working' : 'demo'
     });
   } catch (error) {
     console.error('Failed to fetch sensors:', error);
@@ -260,52 +235,19 @@ router.get('/sensors', async (req, res) => {
 router.get('/sensors/:sensorId/readings', async (req, res) => {
   try {
     const { sensorId } = req.params;
-    const { limit = 50, startAfter, orderBy = 'timestamp', order = 'desc' } = req.query;
+    const { limit = 50 } = req.query;
     
     const simulation = await initializeSensorSimulation();
     
-    if (process.env.DEMO_MODE === 'true') {
-      // Demo mode - return simulated readings
-      const readings = simulation.getDemoReadings(sensorId, parseInt(limit));
-      return res.json({
-        success: true,
-        data: readings,
-        total: readings.length,
-        hasMore: false,
-        mode: 'demo'
-      });
-    }
-    
-    // Firebase mode
-    const { db } = await import('../firebase-admin.js');
-    let query = db.collection('sensor_readings')
-      .where('sensorId', '==', sensorId)
-      .orderBy(orderBy, order)
-      .limit(parseInt(limit));
-    
-    if (startAfter) {
-      const startAfterDoc = await db.collection('sensor_readings').doc(startAfter).get();
-      if (startAfterDoc.exists) {
-        query = query.startAfter(startAfterDoc);
-      }
-    }
-    
-    const readingsSnapshot = await query.get();
-    
-    const readings = [];
-    readingsSnapshot.forEach(doc => {
-      readings.push({
-        id: doc.id,
-        ...doc.data()
-      });
-    });
+    // Use working simulation readings
+    const readings = simulation.getDemoReadings(sensorId, parseInt(limit));
     
     res.json({
       success: true,
       data: readings,
       total: readings.length,
-      hasMore: readings.length === parseInt(limit),
-      mode: 'firebase'
+      hasMore: false,
+      mode: simulation.constructor.name === 'WorkingSensorSimulation' ? 'working' : 'demo'
     });
   } catch (error) {
     console.error('Failed to fetch sensor readings:', error);
@@ -320,91 +262,18 @@ router.get('/sensors/:sensorId/readings', async (req, res) => {
 // Get alerts with filtering
 router.get('/alerts', async (req, res) => {
   try {
-    const { 
-      severity, 
-      status = 'active', 
-      limit = 20, 
-      startAfter,
-      sensorId,
-      timeframe // 'today', 'week', 'month'
-    } = req.query;
+    const { severity, limit = 20, sensorId } = req.query;
     
     const simulation = await initializeSensorSimulation();
     
-    if (process.env.DEMO_MODE === 'true') {
-      // Demo mode - return simulated alerts
-      const alerts = simulation.getDemoAlerts(parseInt(limit), severity, sensorId);
-      return res.json({
-        success: true,
-        data: alerts,
-        total: alerts.length,
-        mode: 'demo'
-      });
-    }
-    
-    // Firebase mode
-    const { db } = await import('../firebase-admin.js');
-    let query = db.collection('alerts').orderBy('timestamp', 'desc');
-    
-    // Apply filters
-    if (severity) {
-      query = query.where('severity', '==', severity);
-    }
-    
-    if (status) {
-      query = query.where('status', '==', status);
-    }
-    
-    if (sensorId) {
-      query = query.where('sensorId', '==', sensorId);
-    }
-    
-    // Time-based filtering
-    if (timeframe) {
-      const now = new Date();
-      let startTime;
-      
-      switch (timeframe) {
-        case 'today':
-          startTime = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-          break;
-        case 'week':
-          startTime = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-          break;
-        case 'month':
-          startTime = new Date(now.getFullYear(), now.getMonth(), 1);
-          break;
-      }
-      
-      if (startTime) {
-        query = query.where('timestamp', '>=', startTime);
-      }
-    }
-    
-    query = query.limit(parseInt(limit));
-    
-    if (startAfter) {
-      const startAfterDoc = await db.collection('alerts').doc(startAfter).get();
-      if (startAfterDoc.exists) {
-        query = query.startAfter(startAfterDoc);
-      }
-    }
-    
-    const alertsSnapshot = await query.get();
-    
-    const alerts = [];
-    alertsSnapshot.forEach(doc => {
-      alerts.push({
-        id: doc.id,
-        ...doc.data()
-      });
-    });
+    // Use working simulation alerts
+    const alerts = simulation.getDemoAlerts(parseInt(limit), severity, sensorId);
     
     res.json({
       success: true,
       data: alerts,
       total: alerts.length,
-      hasMore: alerts.length === parseInt(limit)
+      mode: simulation.constructor.name === 'WorkingSensorSimulation' ? 'working' : 'demo'
     });
   } catch (error) {
     console.error('Failed to fetch alerts:', error);

@@ -1,28 +1,16 @@
-import React, { Suspense, lazy } from "react";
+import React from "react";
 import { Routes, Route } from "react-router-dom";
 import Navbar from "./components/common/Navbar";
 import AuthPage from "./pages/AuthPage";
 import HomePage from "./pages/HomePage";
 import RequireAuth from "./components/common/RequireAuth";
+import TestDashboard from "./TestDashboard";
 
-// Lazy load dashboard components
-const AshaDashboard = lazy(() => import("./dashboards/AshaDashboard"));
-const CommunityDashboard = lazy(() =>
-  import("./dashboards/CommunityDashboard")
-);
-const OfficialDashboard = lazy(() => import("./dashboards/OfficialDashboard"));
-const GovernmentDashboard = lazy(() => import("./pages/GovernmentDashboard"));
-const AdminDashboard = lazy(() => import("./dashboards/AdminDashboard"));
-
-// Loading component
-const LoadingSpinner = () => (
-  <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-900 via-blue-800 to-cyan-600">
-    <div className="text-center">
-      <div className="w-16 h-16 border-4 border-white/30 border-t-white rounded-full animate-spin mx-auto mb-4"></div>
-      <p className="text-white text-lg font-semibold">Loading...</p>
-    </div>
-  </div>
-);
+// Direct imports instead of lazy loading
+import AshaDashboard from "./dashboards/AshaDashboard";
+import CommunityDashboard from "./dashboards/CommunityDashboard";
+import OfficialDashboard from "./dashboards/OfficialDashboard";
+import AdminDashboard from "./dashboards/AdminDashboard";
 
 const AppRoutes = () => (
   <Routes>
@@ -30,14 +18,22 @@ const AppRoutes = () => (
     <Route path="/" element={<HomePage />} />
     <Route path="/auth" element={<AuthPage />} />
 
+    {/* Test route for debugging */}
+    <Route
+      path="/test"
+      element={
+        <div className="p-8">
+          <h1 className="text-2xl">Test Route Working!</h1>
+        </div>
+      }
+    />
+
     {/* Protected dashboard routes - These have their own headers */}
     <Route
       path="/asha-dashboard"
       element={
         <RequireAuth allowedRoles={["asha"]}>
-          <Suspense fallback={<LoadingSpinner />}>
-            <AshaDashboard />
-          </Suspense>
+          <AshaDashboard />
         </RequireAuth>
       }
     />
@@ -45,9 +41,7 @@ const AppRoutes = () => (
       path="/community-dashboard"
       element={
         <RequireAuth allowedRoles={["community"]}>
-          <Suspense fallback={<LoadingSpinner />}>
-            <CommunityDashboard />
-          </Suspense>
+          <CommunityDashboard />
         </RequireAuth>
       }
     />
@@ -55,19 +49,7 @@ const AppRoutes = () => (
       path="/official-dashboard"
       element={
         <RequireAuth allowedRoles={["official", "government"]}>
-          <Suspense fallback={<LoadingSpinner />}>
-            <OfficialDashboard />
-          </Suspense>
-        </RequireAuth>
-      }
-    />
-    <Route
-      path="/government-dashboard"
-      element={
-        <RequireAuth allowedRoles={["government", "official"]}>
-          <Suspense fallback={<LoadingSpinner />}>
-            <GovernmentDashboard />
-          </Suspense>
+          <OfficialDashboard />
         </RequireAuth>
       }
     />
@@ -75,9 +57,7 @@ const AppRoutes = () => (
       path="/admin-dashboard"
       element={
         <RequireAuth allowedRoles={["admin"]}>
-          <Suspense fallback={<LoadingSpinner />}>
-            <AdminDashboard />
-          </Suspense>
+          <AdminDashboard />
         </RequireAuth>
       }
     />

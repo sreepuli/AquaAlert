@@ -10,6 +10,12 @@ export const initializeFirebaseAdmin = () => {
     return adminApp; // Already initialized
   }
 
+  // Skip initialization if in demo mode
+  if (process.env.DEMO_MODE === 'true') {
+    console.log('📝 Demo mode enabled - Firebase Admin SDK disabled');
+    return null;
+  }
+
   try {
     // Method 1: Using service account key file (for development)
     if (process.env.NODE_ENV === 'development') {
@@ -51,13 +57,9 @@ export const initializeFirebaseAdmin = () => {
       return adminApp;
     }
 
-    // Method 3: Default credentials (for Google Cloud deployment)
-    adminApp = admin.initializeApp({
-      projectId: 'project-md-2acd4', // Your actual project ID
-    });
-
-    console.log('✅ Firebase Admin initialized with default credentials');
-    return adminApp;
+    // If no credentials available, return null instead of trying default
+    console.log('⚠️ No Firebase credentials found - running in demo mode');
+    return null;
 
   } catch (error) {
     console.error('❌ Failed to initialize Firebase Admin:', error.message);

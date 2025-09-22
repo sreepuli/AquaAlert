@@ -1,67 +1,75 @@
 import express from 'express';
 import cors from 'cors';
-import helmet from 'helmet';
-import compression from 'compression';
 import dotenv from 'dotenv';
-import { CronJob } from 'cron';
-
-// Import services
-import { checkForOutbreakAlerts, checkWaterQualityAlerts } from './alert-service.js';
-import GovernmentAlertService from './services/governmentAlertService.js';
-import { 
-  submitHealthReport, 
-  getHealthReportsEndpoint,
-  submitWaterQualityReport,
-  getWaterQualityReportsEndpoint,
-  getAlertsEndpoint,
-  acknowledgeAlertEndpoint,
-  getDashboardAnalytics,
-  getPredictionAnalytics,
-  getTrendAnalytics,
-  authenticateUser,
-  requireRole
-} from './api-routes.js';
-
-// Import sensor routes
-import sensorRoutes from './routes/sensors.js';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import WorkingSensorSimulation from './services/workingSensorSimulation.js';
 
 // Load environment variables
 dotenv.config();
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 const app = express();
 const PORT = process.env.PORT || 3001;
-const governmentAlerts = new GovernmentAlertService();
 
-// ==================== MIDDLEWARE ====================
+// Initialize sensor simulation
+let sensorSimulation = null;
 
-// Security middleware
-app.use(helmet());
-app.use(compression());
+const initializeSensorSimulation = async () => {
+  if (!sensorSimulation) {
+    try {
+      console.log('🔥 Initializing AquaAlert Sensor Simulation...');
+      sensorSimulation = new WorkingSensorSimulation();
+      console.log('✅ AquaAlert Sensor Simulation initialized successfully');
+    } catch (error) {
+      console.log('❌ Sensor simulation initialization failed:', error.message);
+      throw error;
+    }
+  }
+  return sensorSimulation;
+};
 
-// CORS configuration
-app.use(cors({
-  origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
-  credentials: true
-}));
+// CORS configuration for production
+const corsOptions = {
+  origin: process.env.NODE_ENV === 'production' 
+    ? [process.env.FRONTEND_URL, process.env.CORS_ORIGIN]
+    : ['http://localhost:5173', 'http://localhost:3000'],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+};
 
-// Body parsing
+// Middleware
+app.use(cors(corsOptions));
 app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(express.urlencoded({ extended: true }));
 
-// Request logging middleware
+// Request logging
 app.use((req, res, next) => {
   console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
   next();
 });
 
-// ==================== ROUTES ====================
-
-// Health check
-app.get('/api/health', (req, res) => {
+// Health check endpoint (required for Render)
+app.get('/health', (req, res) => {
   res.json({ 
     status: 'OK', 
     message: 'AquaAlert Backend is running',
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    version: '1.0.0',
+    environment: process.env.NODE_ENV || 'development'
+  });
+});
+
+// API Health check
+app.get('/api/health', (req, res) => {
+  res.json({ 
+    status: 'OK', 
+    message: 'AquaAlert API is running',
+    timestamp: new Date().toISOString(),
+    simulation: sensorSimulation ? 'initialized' : 'not initialized'
   });
 });
 

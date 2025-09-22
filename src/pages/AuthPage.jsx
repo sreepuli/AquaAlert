@@ -6,6 +6,7 @@ import {
 } from "firebase/auth";
 import { doc, setDoc, getDoc } from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../contexts/AuthContext";
 
 const AuthPage = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -15,6 +16,9 @@ const AuthPage = () => {
   const [role, setRole] = useState("community");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  const navigate = useNavigate();
+  const { login, signup } = useAuth();
 
   // Government official specific fields
   const [officialId, setOfficialId] = useState("");
@@ -33,8 +37,6 @@ const AuthPage = () => {
   // Community member specific fields
   const [familySize, setFamilySize] = useState("");
   const [primaryConcerns, setPrimaryConcerns] = useState([]);
-
-  const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -78,17 +80,10 @@ const AuthPage = () => {
 
     try {
       if (isLogin) {
-        const userCredential = await signInWithEmailAndPassword(
-          auth,
-          email,
-          password
-        );
-        const user = userCredential.user;
-
-        const userDoc = await getDoc(doc(db, "users", user.uid));
-        if (userDoc.exists()) {
-          const userData = userDoc.data();
-          const userRole = userData.role;
+        // Use AuthContext login method
+        const result = await login(email, password);
+        if (result.success) {
+          const userRole = result.user.role;
 
           if (userRole === "asha") {
             navigate("/asha-dashboard");
@@ -101,78 +96,71 @@ const AuthPage = () => {
           } else if (userRole === "admin") {
             navigate("/admin-dashboard"); // admin users go to admin dashboard
           } else {
-            navigate("/dashboard");
+            navigate("/community-dashboard"); // Default fallback
           }
-        } else {
-          navigate("/dashboard");
         }
       } else {
-        const userCredential = await createUserWithEmailAndPassword(
-          auth,
-          email,
-          password
-        );
-        const user = userCredential.user;
-
-        const userData = {
-          uid: user.uid,
-          email: user.email,
+        // Prepare additional data for signup
+        const additionalData = {
           name: name,
-          role: role, // 'community', 'asha', or 'official'
-          userType: role, // Store user type for easy filtering
+          userType: role,
           createdAt: new Date(),
-          emailVerified: user.emailVerified,
           isActive: true,
           lastLogin: new Date(),
         };
 
         // Add role-specific fields
         if (role === "official") {
-          userData.officialId = officialId;
-          userData.department = department;
-          userData.designation = designation;
-          userData.officeAddress = officeAddress;
-          userData.verificationStatus = "pending";
-          userData.verificationDocument = verificationDocument?.name || null;
-          userData.position = designation; // For government alert system
-          userData.alertTypes = ["water_quality", "critical_alerts"]; // Default alert types
-          userData.district = officeAddress?.includes("Jorhat")
+          additionalData.officialId = officialId;
+          additionalData.department = department;
+          additionalData.designation = designation;
+          additionalData.officeAddress = officeAddress;
+          additionalData.verificationStatus = "pending";
+          additionalData.verificationDocument =
+            verificationDocument?.name || null;
+          additionalData.position = designation;
+          additionalData.alertTypes = ["water_quality", "critical_alerts"];
+          additionalData.district = officeAddress?.includes("Jorhat")
             ? "Jorhat"
-            : "Majuli"; // Extract district
+            : "Majuli";
         } else if (role === "asha") {
-          userData.ashaId =
+          additionalData.ashaId =
             name.replace(/\s+/g, "_").toLowerCase() + "_" + Date.now();
-          userData.village = village;
-          userData.district = district;
-          userData.primaryHealthCenter = primaryHealthCenter;
-          userData.contactNumber = contactNumber;
-          userData.supervisorName = supervisorName;
-          userData.alertTypes = ["health_outbreak", "community_alerts"];
-          userData.position = "ASHA Worker";
-          userData.verificationStatus = "pending"; // ASHA workers need verification
+          additionalData.village = village;
+          additionalData.district = district;
+          additionalData.primaryHealthCenter = primaryHealthCenter;
+          additionalData.contactNumber = contactNumber;
+          additionalData.supervisorName = supervisorName;
+          additionalData.alertTypes = ["health_outbreak", "community_alerts"];
+          additionalData.position = "ASHA Worker";
+          additionalData.verificationStatus = "pending";
         } else if (role === "community") {
-          userData.communityId =
+          additionalData.communityId =
             name.replace(/\s+/g, "_").toLowerCase() + "_" + Date.now();
-          userData.village = village;
-          userData.district = district;
-          userData.familySize = parseInt(familySize) || 1;
-          userData.primaryConcerns = primaryConcerns;
-          userData.contactNumber = contactNumber;
-          userData.alertTypes = ["water_quality", "health_outbreak"];
-          userData.position = "Community Member";
-          userData.verificationStatus = "active"; // Community members are auto-approved
+          additionalData.village = village;
+          additionalData.district = district;
+          additionalData.familySize = parseInt(familySize) || 1;
+          additionalData.primaryConcerns = primaryConcerns;
+          additionalData.contactNumber = contactNumber;
+          additionalData.alertTypes = ["water_quality", "health_outbreak"];
+          additionalData.position = "Community Member";
+          additionalData.verificationStatus = "active";
         }
 
-        await setDoc(doc(db, "users", user.uid), userData);
+        // Use AuthContext signup method
+        const result = await signup(email, password, role, additionalData);
+        if (result.success) {
+          const userRole = result.user.role;
 
-        if (role === "asha") {
-          navigate("/asha-dashboard");
-        } else if (role === "community") {
-          navigate("/community-dashboard");
-        } else if (role === "official") {
-          navigate("/official-dashboard");
-        } else {
-          navigate("/dashboard");
+          if (userRole === "asha") {
+            navigate("/asha-dashboard");
+          } else if (userRole === "community") {
+            navigate("/community-dashboard");
+          } else if (userRole === "official") {
+            navigate("/official-dashboard");
+          } else {
+            navigate("/community-dashboard"); // Default fallback
+          }
         }
       }
     } catch (error) {

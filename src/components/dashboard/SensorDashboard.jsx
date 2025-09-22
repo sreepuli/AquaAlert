@@ -1,223 +1,24 @@
 import React, { useState, useEffect, memo } from "react";
-import { db } from "../../firebase";
-import {
-  collection,
-  query,
-  orderBy,
-  limit,
-  onSnapshot,
-  where,
-} from "firebase/firestore";
 import { useLanguage } from "../../contexts/LanguageContext";
 
 // ==================== SIMULATION CONTROLS ====================
 
-const [simulationStatus, setSimulationStatus] = useState({
-  isRunning: false,
-  mode: "demo",
-  sensors: 0,
-  lastUpdate: null,
-});
-const [simulationLoading, setSimulationLoading] = useState(false);
-
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
 
-const startSimulation = async () => {
-  try {
-    setSimulationLoading(true);
-    const response = await fetch(
-      `${API_BASE_URL}/api/sensors/simulation/start`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      }
-    );
+// ==================== DEMO DATA ====================
 
-    const result = await response.json();
-
-    if (result.success) {
-      setSimulationStatus({
-        isRunning: true,
-        mode: result.mode || "demo",
-        sensors: result.status?.sensors || 0,
-        lastUpdate: new Date().toISOString(),
-      });
-
-      // Refresh data after starting simulation
-      setTimeout(() => {
-        fetchFromAPI();
-      }, 2000);
-
-      alert("✅ Sensor simulation started successfully!");
-    } else {
-      alert("❌ Failed to start simulation: " + result.message);
-    }
-  } catch (error) {
-    console.error("Error starting simulation:", error);
-    alert("❌ Error starting simulation: " + error.message);
-  } finally {
-    setSimulationLoading(false);
-  }
-};
-
-const stopSimulation = async () => {
-  try {
-    setSimulationLoading(true);
-    const response = await fetch(
-      `${API_BASE_URL}/api/sensors/simulation/stop`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      }
-    );
-
-    const result = await response.json();
-
-    if (result.success) {
-      setSimulationStatus({
-        isRunning: false,
-        mode: "stopped",
-        sensors: 0,
-        lastUpdate: new Date().toISOString(),
-      });
-
-      alert("⏹️ Sensor simulation stopped successfully!");
-    } else {
-      alert("❌ Failed to stop simulation: " + result.message);
-    }
-  } catch (error) {
-    console.error("Error stopping simulation:", error);
-    alert("❌ Error stopping simulation: " + error.message);
-  } finally {
-    setSimulationLoading(false);
-  }
-};
-
-const checkSimulationStatus = async () => {
-  try {
-    const response = await fetch(
-      `${API_BASE_URL}/api/sensors/simulation/status`
-    );
-    const result = await response.json();
-
-    if (result.success) {
-      setSimulationStatus({
-        isRunning: result.data?.isRunning || false,
-        mode: result.data?.mode || "demo",
-        sensors: result.data?.sensors || 0,
-        lastUpdate: new Date().toISOString(),
-      });
-    }
-  } catch (error) {
-    console.error("Error checking simulation status:", error);
-  }
-};
-
-// Check simulation status on component mount
-useEffect(() => {
-  checkSimulationStatus();
-}, []);
-
+// Temporary placeholder for simulation controls (will be moved inside component)
 const renderSimulationControls = () => (
   <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-    <div className="flex items-center justify-between mb-6">
-      <div>
-        <h3 className="text-lg font-semibold text-gray-900">
-          Sensor Simulation Control
-        </h3>
-        <p className="text-sm text-gray-500">
-          Start or stop the water quality sensor simulation
-        </p>
-      </div>
-      <div className="flex items-center space-x-2">
-        <div
-          className={`w-3 h-3 rounded-full ${
-            simulationStatus.isRunning ? "bg-green-500" : "bg-red-500"
-          }`}
-        ></div>
-        <span
-          className={`text-sm font-medium ${
-            simulationStatus.isRunning ? "text-green-600" : "text-red-600"
-          }`}
-        >
-          {simulationStatus.isRunning ? "Running" : "Stopped"}
-        </span>
-      </div>
+    <div className="text-center text-gray-500">
+      <p>Simulation controls temporarily disabled</p>
+      <p className="text-sm">
+        Controls will be restored after fixing hooks violations
+      </p>
     </div>
-
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-      <div className="bg-gray-50 rounded-lg p-4">
-        <div className="text-2xl font-bold text-blue-600">
-          {simulationStatus.sensors}
-        </div>
-        <div className="text-sm text-gray-600">Active Sensors</div>
-      </div>
-      <div className="bg-gray-50 rounded-lg p-4">
-        <div className="text-sm font-medium text-gray-900 capitalize">
-          {simulationStatus.mode}
-        </div>
-        <div className="text-sm text-gray-600">Simulation Mode</div>
-      </div>
-    </div>
-
-    <div className="flex space-x-4">
-      <button
-        onClick={startSimulation}
-        disabled={simulationLoading || simulationStatus.isRunning}
-        className={`px-6 py-3 rounded-lg font-medium transition-colors ${
-          simulationStatus.isRunning
-            ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-            : "bg-green-600 text-white hover:bg-green-700"
-        }`}
-      >
-        {simulationLoading ? (
-          <div className="flex items-center">
-            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-            Starting...
-          </div>
-        ) : (
-          "▶️ Start Simulation"
-        )}
-      </button>
-
-      <button
-        onClick={stopSimulation}
-        disabled={simulationLoading || !simulationStatus.isRunning}
-        className={`px-6 py-3 rounded-lg font-medium transition-colors ${
-          !simulationStatus.isRunning
-            ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-            : "bg-red-600 text-white hover:bg-red-700"
-        }`}
-      >
-        {simulationLoading ? (
-          <div className="flex items-center">
-            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-            Stopping...
-          </div>
-        ) : (
-          "⏹️ Stop Simulation"
-        )}
-      </button>
-
-      <button
-        onClick={checkSimulationStatus}
-        className="px-6 py-3 rounded-lg font-medium bg-blue-600 text-white hover:bg-blue-700 transition-colors"
-      >
-        🔄 Refresh Status
-      </button>
-    </div>
-
-    {simulationStatus.lastUpdate && (
-      <div className="mt-4 text-xs text-gray-500">
-        Last updated: {new Date(simulationStatus.lastUpdate).toLocaleString()}
-      </div>
-    )}
   </div>
 );
+
 const getStatusColor = (status) => {
   const statusColors = {
     online: "bg-green-100 text-green-800",
@@ -487,7 +288,6 @@ const SensorDashboard = () => {
   const [alerts, setAlerts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("overview");
-  const [isDemoMode, setIsDemoMode] = useState(false);
   const [stats, setStats] = useState({
     totalSensors: 0,
     onlineSensors: 0,
@@ -498,13 +298,6 @@ const SensorDashboard = () => {
   // ==================== API DATA FETCHING ====================
   const fetchFromAPI = async () => {
     try {
-      // Check environment mode
-      const envResponse = await fetch(
-        "http://localhost:3001/api/sensors/env-test"
-      );
-      const envData = await envResponse.json();
-      setIsDemoMode(envData.DEMO_MODE === "true");
-
       // Fetch sensors
       const sensorsResponse = await fetch("http://localhost:3001/api/sensors");
       const sensorsData = await sensorsResponse.json();
@@ -560,127 +353,28 @@ const SensorDashboard = () => {
       setLoading(false);
       return true;
     } catch (error) {
-      console.log("API fetch failed, will try Firebase:", error);
+      console.log("API fetch failed:", error);
       return false;
-    }
-  };
-
-  // ==================== FIREBASE DATA FETCHING ====================
-  const fetchFromFirebase = () => {
-    try {
-      const sensorsQuery = query(collection(db, "sensors"), orderBy("name"));
-      const unsubscribe = onSnapshot(sensorsQuery, (snapshot) => {
-        const sensorsData = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
-        setSensors(sensorsData);
-
-        setStats((prev) => ({
-          ...prev,
-          totalSensors: sensorsData.length,
-          onlineSensors: sensorsData.filter(
-            (s) => s.status === "online" || s.status === "active"
-          ).length,
-        }));
-
-        setLoading(false);
-      });
-
-      return unsubscribe;
-    } catch (error) {
-      console.log("Firebase connection failed:", error);
-      setLoading(false);
-      return null;
     }
   };
 
   // ==================== EFFECTS ====================
   useEffect(() => {
-    let unsubscribe = null;
     let pollInterval = null;
 
     const initializeData = async () => {
       const apiSuccess = await fetchFromAPI();
 
-      if (!apiSuccess && !isDemoMode) {
-        unsubscribe = fetchFromFirebase();
-        if (!unsubscribe) {
-          pollInterval = setInterval(fetchFromAPI, 10000);
-        }
-      } else if (isDemoMode || apiSuccess) {
-        pollInterval = setInterval(fetchFromAPI, 10000);
-      }
+      // Always poll every 1 minute (60000 ms)
+      pollInterval = setInterval(fetchFromAPI, 60000);
     };
 
     initializeData();
 
     return () => {
-      if (unsubscribe) unsubscribe();
       if (pollInterval) clearInterval(pollInterval);
     };
   }, []);
-
-  // Firebase sensor readings subscription
-  useEffect(() => {
-    if (sensors.length === 0 || isDemoMode) return;
-
-    const fetchReadings = async () => {
-      for (const sensor of sensors) {
-        const readingsQuery = query(
-          collection(db, "sensor_readings"),
-          where("sensorId", "==", sensor.id),
-          orderBy("timestamp", "desc"),
-          limit(10)
-        );
-
-        onSnapshot(readingsQuery, (snapshot) => {
-          const readings = snapshot.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-          }));
-
-          setSensorReadings((prev) => ({
-            ...prev,
-            [sensor.id]: readings,
-          }));
-        });
-      }
-    };
-
-    fetchReadings();
-  }, [sensors, isDemoMode]);
-
-  // Firebase alerts subscription
-  useEffect(() => {
-    if (isDemoMode) return;
-
-    const alertsQuery = query(
-      collection(db, "alerts"),
-      orderBy("timestamp", "desc"),
-      limit(20)
-    );
-
-    const unsubscribe = onSnapshot(alertsQuery, (snapshot) => {
-      const alertsData = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-      setAlerts(alertsData);
-
-      setStats((prev) => ({
-        ...prev,
-        activeAlerts: alertsData.filter((a) => a.status === "active").length,
-        criticalAlerts: alertsData.filter(
-          (a) => a.severity === "critical" && a.status === "active"
-        ).length,
-      }));
-
-      setLoading(false);
-    });
-
-    return () => unsubscribe();
-  }, [isDemoMode]);
 
   // ==================== RENDER HELPERS ====================
   const renderTabNavigation = () => {
@@ -810,20 +504,33 @@ const SensorDashboard = () => {
           </h1>
           <p className="text-gray-600">{t("realTimeWaterQualityMonitoring")}</p>
           <div className="flex items-center space-x-4 mt-1">
-            <span
-              className={`text-xs px-2 py-1 rounded-full ${
-                isDemoMode
-                  ? "bg-orange-100 text-orange-800"
-                  : "bg-green-100 text-green-800"
-              }`}
-            >
-              {isDemoMode ? "🎮 Demo Mode" : "🔥 Firebase Mode"}
-            </span>
             <button
               onClick={fetchFromAPI}
               className="text-xs text-blue-600 hover:text-blue-800 underline"
             >
               🔄 Refresh Data
+            </button>
+            <button
+              onClick={async () => {
+                try {
+                  const response = await fetch(
+                    "http://localhost:3001/api/sensors/simulation/start",
+                    {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                    }
+                  );
+                  const result = await response.json();
+                  console.log("Simulation started:", result);
+                  // Give backend a moment to start, then refresh data
+                  setTimeout(fetchFromAPI, 2000);
+                } catch (error) {
+                  console.error("Failed to start simulation:", error);
+                }
+              }}
+              className="px-3 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
+            >
+              ▶️ Start Simulation
             </button>
           </div>
         </div>

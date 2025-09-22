@@ -133,7 +133,7 @@ class DemoSensorSimulation {
   setupEmailTransporter() {
     // Setup real email transporter for government alerts
     try {
-      this.emailTransporter = nodemailer.createTransporter({
+      this.emailTransporter = nodemailer.createTransport({
         host: 'smtp.gmail.com', // Use government SMTP server in production
         port: 587,
         secure: false,
