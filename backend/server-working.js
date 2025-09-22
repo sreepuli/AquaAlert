@@ -46,14 +46,33 @@ const initializeSensorSimulation = async () => {
 
 // Health check endpoint (required for Render)
 app.get('/health', (req, res) => {
-  res.json({ 
-    status: 'OK', 
-    message: 'AquaAlert Backend is running with Working Simulation',
-    timestamp: new Date().toISOString(),
-    version: '1.0.0',
-    simulation: 'working',
-    environment: process.env.NODE_ENV || 'development'
-  });
+  try {
+    const memoryUsage = process.memoryUsage();
+    const uptime = process.uptime();
+    
+    res.json({ 
+      status: 'OK', 
+      message: 'AquaAlert Backend is running with Working Simulation',
+      timestamp: new Date().toISOString(),
+      version: '1.0.0',
+      simulation: 'working',
+      environment: process.env.NODE_ENV || 'development',
+      uptime: Math.floor(uptime),
+      memory: {
+        rss: Math.floor(memoryUsage.rss / 1024 / 1024) + 'MB',
+        heapUsed: Math.floor(memoryUsage.heapUsed / 1024 / 1024) + 'MB',
+        heapTotal: Math.floor(memoryUsage.heapTotal / 1024 / 1024) + 'MB'
+      },
+      simulation_status: sensorSimulation ? sensorSimulation.getSimulationStatus() : 'not initialized'
+    });
+  } catch (error) {
+    console.error('Health check error:', error);
+    res.status(500).json({
+      status: 'ERROR',
+      message: 'Health check failed',
+      error: error.message
+    });
+  }
 });
 
 // API Health check endpoint
@@ -264,10 +283,15 @@ app.listen(PORT, '0.0.0.0', () => {
 // Graceful shutdown
 process.on('SIGTERM', () => {
   console.log('SIGTERM received. Shutting down gracefully...');
+  console.log('Server uptime:', Math.floor(process.uptime()), 'seconds');
   if (sensorSimulation) {
+    console.log('🛑 Stopping simulation...');
     sensorSimulation.stopSimulation();
   }
-  process.exit(0);
+  console.log('🛑 Simulation stopped');
+  setTimeout(() => {
+    process.exit(0);
+  }, 1000);
 });
 
 process.on('SIGINT', () => {
@@ -277,5 +301,28 @@ process.on('SIGINT', () => {
   }
   process.exit(0);
 });
+
+// Handle uncaught exceptions
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught Exception:', error);
+  console.error('Stack trace:', error.stack);
+  // Don't exit immediately, let the process continue
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  // Don't exit immediately, let the process continue
+});
+
+// Log memory usage every 5 minutes
+setInterval(() => {
+  const memoryUsage = process.memoryUsage();
+  console.log('📊 Memory usage:', {
+    rss: Math.floor(memoryUsage.rss / 1024 / 1024) + 'MB',
+    heapUsed: Math.floor(memoryUsage.heapUsed / 1024 / 1024) + 'MB',
+    heapTotal: Math.floor(memoryUsage.heapTotal / 1024 / 1024) + 'MB',
+    uptime: Math.floor(process.uptime()) + 's'
+  });
+}, 5 * 60 * 1000);
 
 export default app;
