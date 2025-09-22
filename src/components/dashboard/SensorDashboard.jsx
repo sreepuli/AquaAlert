@@ -390,7 +390,7 @@ const SensorDashboard = () => {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center space-x-2 py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
+              className={`flex items-center space-x-2 py-2 px-1 border-b-2 font-medium text-sm transition-all duration-200 ease-in-out transform hover:scale-105 active:scale-95 ${
                 activeTab === tab.id
                   ? "border-blue-500 text-blue-600"
                   : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
@@ -504,7 +504,7 @@ const SensorDashboard = () => {
           <div className="flex items-center space-x-4 mt-1">
             <button
               onClick={fetchFromAPI}
-              className="text-xs text-blue-600 hover:text-blue-800 underline"
+              className="text-xs text-blue-600 hover:text-blue-800 underline transition-all duration-200 ease-in-out transform hover:scale-105 active:scale-95"
             >
               🔄 Refresh Data
             </button>
@@ -526,7 +526,7 @@ const SensorDashboard = () => {
                   console.error("Failed to start simulation:", error);
                 }
               }}
-              className="px-3 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
+              className="px-3 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 transition-all duration-200 ease-in-out transform hover:scale-105 active:scale-95 shadow-sm hover:shadow-md"
             >
               ▶️ Start Simulation
             </button>
