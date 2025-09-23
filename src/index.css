@@ -35,6 +35,31 @@ html, body, #root {
   width: 100vw !important;
 }
 
+/* Modal z-index fix to ensure it appears above all map elements */
+.modal-overlay {
+  z-index: 9999 !important;
+  position: fixed !important;
+}
+
+.modal-content {
+  z-index: 10000 !important;
+  position: relative !important;
+}
+
+/* Prevent body scroll when modal is open */
+.modal-open {
+  overflow: hidden !important;
+}
+
+/* Ensure Leaflet maps don't interfere with modals */
+.leaflet-container {
+  z-index: 1 !important;
+}
+
+.leaflet-control-container {
+  z-index: 2 !important;
+}
+
 /* Force full width - no left spacing */
 .full-width {
   width: 100vw !important;

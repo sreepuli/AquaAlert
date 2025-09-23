@@ -632,6 +632,187 @@ app.post('/api/admin/create-admin', async (req, res) => {
   }
 });
 
+// ==================== COMPLAINT SYSTEM ENDPOINTS ====================
+
+// Complaint submission endpoint
+app.post('/api/complaints', async (req, res) => {
+  try {
+    console.log('📝 Received complaint submission:', req.body);
+    
+    const {
+      title,
+      category,
+      priority,
+      description,
+      location,
+      contactName,
+      contactEmail,
+      contactPhone,
+      anonymous
+    } = req.body;
+
+    // Validate required fields
+    if (!title || !category || !priority || !description) {
+      return res.status(400).json({
+        success: false,
+        message: 'Missing required fields: title, category, priority, and description'
+      });
+    }
+
+    // Create complaint object
+    const complaint = {
+      id: Date.now().toString(), // Simple ID generation
+      title: title.trim(),
+      category,
+      priority,
+      description: description.trim(),
+      location: location?.trim() || '',
+      contactName: contactName?.trim() || '',
+      contactEmail: contactEmail?.trim() || '',
+      contactPhone: contactPhone?.trim() || '',
+      anonymous: Boolean(anonymous),
+      status: 'open',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    // Get simulation instance to access Firebase/database
+    const simulation = sensorSimulation || await initializeSensorSimulation();
+    
+    // Store complaint in Firebase (similar to how sensor data is stored)
+    if (simulation.db) {
+      try {
+        await simulation.db.collection('complaints').add(complaint);
+        console.log('✅ Complaint stored in Firebase:', complaint.id);
+      } catch (firebaseError) {
+        console.log('⚠️ Firebase storage failed, using in-memory storage');
+        // Fallback to in-memory storage
+        if (!global.complaints) global.complaints = [];
+        global.complaints.push(complaint);
+      }
+    } else {
+      // Demo mode - store in memory
+      console.log('📂 Storing complaint in demo mode (memory)');
+      if (!global.complaints) global.complaints = [];
+      global.complaints.push(complaint);
+    }
+
+    // Send notification email to government officials for high priority complaints
+    if (priority === 'high' || priority === 'critical') {
+      try {
+        const emailSubject = `🚨 ${priority.toUpperCase()} Priority Complaint - ${title}`;
+        const emailBody = `
+          A new ${priority} priority complaint has been submitted to AquaAlert:
+          
+          Title: ${title}
+          Category: ${category}
+          Priority: ${priority}
+          Location: ${location || 'Not specified'}
+          
+          Description:
+          ${description}
+          
+          Contact Information:
+          ${anonymous ? 'Anonymous submission' : `
+          Name: ${contactName || 'Not provided'}
+          Email: ${contactEmail || 'Not provided'}
+          Phone: ${contactPhone || 'Not provided'}
+          `}
+          
+          Submitted: ${complaint.createdAt}
+          Complaint ID: ${complaint.id}
+          
+          Please review and take appropriate action.
+          
+          ---
+          AquaAlert Water Quality Monitoring System
+        `;
+
+        // Use simulation's email system
+        if (simulation.transporter) {
+          await simulation.transporter.sendMail({
+            from: process.env.EMAIL_USER,
+            to: process.env.GOVT_EMAIL || 'aquaalert9@gmail.com',
+            subject: emailSubject,
+            text: emailBody
+          });
+          console.log('📧 Complaint notification email sent to officials');
+        }
+      } catch (emailError) {
+        console.error('📧 Failed to send complaint notification email:', emailError);
+        // Don't fail the complaint submission if email fails
+      }
+    }
+
+    res.json({
+      success: true,
+      message: 'Complaint submitted successfully',
+      complaintId: complaint.id,
+      status: 'open'
+    });
+
+  } catch (error) {
+    console.error('❌ Complaint submission failed:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to submit complaint',
+      error: error.message
+    });
+  }
+});
+
+// Get complaints endpoint (for officials/admin)
+app.get('/api/complaints', async (req, res) => {
+  try {
+    const { status, category, priority } = req.query;
+    let complaints = [];
+
+    // Get simulation instance
+    const simulation = sensorSimulation || await initializeSensorSimulation();
+    
+    // Retrieve complaints from Firebase or memory
+    if (simulation.db) {
+      try {
+        let query = simulation.db.collection('complaints');
+        
+        // Apply filters
+        if (status) query = query.where('status', '==', status);
+        if (category) query = query.where('category', '==', category);
+        if (priority) query = query.where('priority', '==', priority);
+        
+        const snapshot = await query.orderBy('createdAt', 'desc').get();
+        complaints = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        console.log(`📋 Retrieved ${complaints.length} complaints from Firebase`);
+      } catch (firebaseError) {
+        console.log('⚠️ Firebase retrieval failed, using in-memory data');
+        complaints = global.complaints || [];
+      }
+    } else {
+      // Demo mode
+      complaints = global.complaints || [];
+      console.log(`📋 Retrieved ${complaints.length} complaints from demo mode`);
+    }
+
+    // Apply client-side filters for demo mode
+    if (status) complaints = complaints.filter(c => c.status === status);
+    if (category) complaints = complaints.filter(c => c.category === category);
+    if (priority) complaints = complaints.filter(c => c.priority === priority);
+
+    res.json({
+      success: true,
+      complaints: complaints.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+    });
+
+  } catch (error) {
+    console.error('❌ Failed to retrieve complaints:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to retrieve complaints',
+      error: error.message
+    });
+  }
+});
+
 // ==================== ERROR HANDLING ====================
 
 // 404 handler

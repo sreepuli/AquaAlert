@@ -99,6 +99,9 @@ const OfficialDashboard = () => {
   const [activeTab, setActiveTab] = useState("overview");
   const [allPatientRecords, setAllPatientRecords] = useState([]);
   const [patientRecordsLoading, setPatientRecordsLoading] = useState(true);
+  const [complaints, setComplaints] = useState([]);
+  const [complaintsLoading, setComplaintsLoading] = useState(true);
+  const [selectedComplaintFilter, setSelectedComplaintFilter] = useState("all");
 
   // Load all patient records for government monitoring
   useEffect(() => {
@@ -108,6 +111,36 @@ const OfficialDashboard = () => {
     });
 
     return () => unsubscribe();
+  }, []);
+
+  // Load complaints from backend
+  useEffect(() => {
+    const fetchComplaints = async () => {
+      try {
+        setComplaintsLoading(true);
+        const response = await fetch(
+          `${
+            import.meta.env.VITE_API_URL || "http://localhost:3001"
+          }/api/complaints`
+        );
+        if (response.ok) {
+          const data = await response.json();
+          setComplaints(data.complaints || []);
+        } else {
+          console.error("Failed to fetch complaints:", response.statusText);
+        }
+      } catch (error) {
+        console.error("Error fetching complaints:", error);
+      } finally {
+        setComplaintsLoading(false);
+      }
+    };
+
+    fetchComplaints();
+
+    // Refresh complaints every 30 seconds
+    const interval = setInterval(fetchComplaints, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   const handleLogout = async () => {
@@ -445,6 +478,11 @@ const OfficialDashboard = () => {
                     id: "alerts",
                     name: t("alerts"),
                     icon: "M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z",
+                  },
+                  {
+                    id: "complaints",
+                    name: "Complaints",
+                    icon: "M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z",
                   },
                 ].map((tab) => (
                   <button
@@ -1011,6 +1049,390 @@ const OfficialDashboard = () => {
               {activeTab === "sensors" && (
                 <div>
                   <SensorDashboard />
+                </div>
+              )}
+
+              {/* Complaints Tab */}
+              {activeTab === "complaints" && (
+                <div className="space-y-6">
+                  {/* Header */}
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h2 className="text-2xl font-bold text-gray-900">
+                        Community Complaints
+                      </h2>
+                      <p className="text-gray-600 mt-1">
+                        Review and manage water quality complaints from the
+                        community
+                      </p>
+                    </div>
+                    <div className="flex items-center space-x-4">
+                      {/* Filter Dropdown */}
+                      <select
+                        value={selectedComplaintFilter}
+                        onChange={(e) =>
+                          setSelectedComplaintFilter(e.target.value)
+                        }
+                        className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      >
+                        <option value="all">All Complaints</option>
+                        <option value="open">Open</option>
+                        <option value="in_progress">In Progress</option>
+                        <option value="resolved">Resolved</option>
+                        <option value="critical">Critical Priority</option>
+                        <option value="high">High Priority</option>
+                      </select>
+
+                      {/* Refresh Button */}
+                      <button
+                        onClick={() => window.location.reload()}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
+                      >
+                        <svg
+                          className="w-4 h-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                          />
+                        </svg>
+                        <span>Refresh</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Statistics Cards */}
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                    <div className="bg-gradient-to-r from-red-500 to-red-600 rounded-xl p-6 text-white">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-red-100">Critical</p>
+                          <p className="text-2xl font-bold">
+                            {
+                              complaints.filter(
+                                (c) => c.priority === "critical"
+                              ).length
+                            }
+                          </p>
+                        </div>
+                        <div className="p-3 bg-red-400 rounded-full">
+                          <svg
+                            className="w-6 h-6"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                            />
+                          </svg>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl p-6 text-white">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-orange-100">High Priority</p>
+                          <p className="text-2xl font-bold">
+                            {
+                              complaints.filter((c) => c.priority === "high")
+                                .length
+                            }
+                          </p>
+                        </div>
+                        <div className="p-3 bg-orange-400 rounded-full">
+                          <svg
+                            className="w-6 h-6"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                            />
+                          </svg>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl p-6 text-white">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-blue-100">Open</p>
+                          <p className="text-2xl font-bold">
+                            {
+                              complaints.filter((c) => c.status === "open")
+                                .length
+                            }
+                          </p>
+                        </div>
+                        <div className="p-3 bg-blue-400 rounded-full">
+                          <svg
+                            className="w-6 h-6"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                            />
+                          </svg>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-xl p-6 text-white">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-green-100">Total</p>
+                          <p className="text-2xl font-bold">
+                            {complaints.length}
+                          </p>
+                        </div>
+                        <div className="p-3 bg-green-400 rounded-full">
+                          <svg
+                            className="w-6 h-6"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                            />
+                          </svg>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Complaints List */}
+                  <div className="bg-white rounded-xl shadow-lg border border-gray-100">
+                    <div className="p-6 border-b border-gray-200">
+                      <h3 className="text-lg font-semibold text-gray-900">
+                        Recent Complaints
+                      </h3>
+                    </div>
+
+                    {complaintsLoading ? (
+                      <div className="p-8 text-center">
+                        <div className="inline-flex items-center space-x-2">
+                          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                          <span className="text-gray-600">
+                            Loading complaints...
+                          </span>
+                        </div>
+                      </div>
+                    ) : complaints.length === 0 ? (
+                      <div className="p-8 text-center">
+                        <div className="text-gray-400 mb-2">
+                          <svg
+                            className="w-12 h-12 mx-auto"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                            />
+                          </svg>
+                        </div>
+                        <p className="text-gray-600 text-lg">
+                          No complaints submitted yet
+                        </p>
+                        <p className="text-gray-500 text-sm mt-1">
+                          Community members can report issues through their
+                          dashboard
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="divide-y divide-gray-200">
+                        {complaints
+                          .filter((complaint) => {
+                            if (selectedComplaintFilter === "all") return true;
+                            if (
+                              selectedComplaintFilter === "critical" ||
+                              selectedComplaintFilter === "high"
+                            ) {
+                              return (
+                                complaint.priority === selectedComplaintFilter
+                              );
+                            }
+                            return complaint.status === selectedComplaintFilter;
+                          })
+                          .map((complaint) => (
+                            <div
+                              key={complaint.id}
+                              className="p-6 hover:bg-gray-50 transition-colors"
+                            >
+                              <div className="flex items-start justify-between">
+                                <div className="flex-1">
+                                  <div className="flex items-center space-x-3 mb-2">
+                                    <h4 className="text-lg font-semibold text-gray-900">
+                                      {complaint.title}
+                                    </h4>
+
+                                    {/* Priority Badge */}
+                                    <span
+                                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                        complaint.priority === "critical"
+                                          ? "bg-red-100 text-red-800"
+                                          : complaint.priority === "high"
+                                          ? "bg-orange-100 text-orange-800"
+                                          : complaint.priority === "medium"
+                                          ? "bg-yellow-100 text-yellow-800"
+                                          : "bg-green-100 text-green-800"
+                                      }`}
+                                    >
+                                      {complaint.priority?.toUpperCase() ||
+                                        "LOW"}
+                                    </span>
+
+                                    {/* Category Badge */}
+                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                      {complaint.category
+                                        ?.replace("_", " ")
+                                        .toUpperCase() || "GENERAL"}
+                                    </span>
+                                  </div>
+
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
+                                    <div>
+                                      <p className="text-sm text-gray-600 mb-1">
+                                        <span className="font-medium">
+                                          Description:
+                                        </span>
+                                      </p>
+                                      <p className="text-gray-800">
+                                        {complaint.description}
+                                      </p>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                      {complaint.location && (
+                                        <p className="text-sm">
+                                          <span className="font-medium text-gray-600">
+                                            Location:
+                                          </span>
+                                          <span className="text-gray-800 ml-1">
+                                            {complaint.location}
+                                          </span>
+                                        </p>
+                                      )}
+
+                                      {!complaint.anonymous &&
+                                        complaint.contactName && (
+                                          <p className="text-sm">
+                                            <span className="font-medium text-gray-600">
+                                              Contact:
+                                            </span>
+                                            <span className="text-gray-800 ml-1">
+                                              {complaint.contactName}
+                                            </span>
+                                            {complaint.contactEmail && (
+                                              <span className="text-gray-600 ml-1">
+                                                ({complaint.contactEmail})
+                                              </span>
+                                            )}
+                                          </p>
+                                        )}
+
+                                      {complaint.anonymous && (
+                                        <p className="text-sm">
+                                          <span className="font-medium text-gray-600">
+                                            Contact:
+                                          </span>
+                                          <span className="text-gray-500 ml-1 italic">
+                                            Anonymous submission
+                                          </span>
+                                        </p>
+                                      )}
+
+                                      <p className="text-sm">
+                                        <span className="font-medium text-gray-600">
+                                          Submitted:
+                                        </span>
+                                        <span className="text-gray-800 ml-1">
+                                          {new Date(
+                                            complaint.createdAt
+                                          ).toLocaleDateString()}{" "}
+                                          at{" "}
+                                          {new Date(
+                                            complaint.createdAt
+                                          ).toLocaleTimeString()}
+                                        </span>
+                                      </p>
+
+                                      <p className="text-sm">
+                                        <span className="font-medium text-gray-600">
+                                          ID:
+                                        </span>
+                                        <span className="text-gray-800 ml-1 font-mono">
+                                          {complaint.id}
+                                        </span>
+                                      </p>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Status Badge */}
+                                <div className="ml-4">
+                                  <span
+                                    className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+                                      complaint.status === "resolved"
+                                        ? "bg-green-100 text-green-800"
+                                        : complaint.status === "in_progress"
+                                        ? "bg-yellow-100 text-yellow-800"
+                                        : "bg-gray-100 text-gray-800"
+                                    }`}
+                                  >
+                                    {complaint.status
+                                      ?.replace("_", " ")
+                                      .toUpperCase() || "OPEN"}
+                                  </span>
+                                </div>
+                              </div>
+
+                              {/* Action Buttons */}
+                              <div className="mt-4 flex items-center space-x-3">
+                                <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm">
+                                  Mark In Progress
+                                </button>
+                                <button className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm">
+                                  Mark Resolved
+                                </button>
+                                {(complaint.priority === "critical" ||
+                                  complaint.priority === "high") && (
+                                  <button className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors text-sm">
+                                    Escalate
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
