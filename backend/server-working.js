@@ -245,6 +245,96 @@ app.post('/api/test/email', async (req, res) => {
   }
 });
 
+// Debug email throttling status
+app.get('/api/debug/email-status', async (req, res) => {
+  try {
+    const simulation = await initializeSensorSimulation();
+    const throttlingStatus = {};
+    
+    // Get current throttling status
+    for (const [key, timestamp] of simulation.lastEmailSent.entries()) {
+      const now = new Date();
+      const minutesSinceLastEmail = Math.floor((now - timestamp) / (60 * 1000));
+      const minutesUntilNext = Math.max(0, simulation.emailCooldownMinutes - minutesSinceLastEmail);
+      
+      throttlingStatus[key] = {
+        lastEmailTime: timestamp.toISOString(),
+        minutesSinceLastEmail,
+        minutesUntilNext,
+        canSendEmail: minutesUntilNext === 0
+      };
+    }
+    
+    res.json({
+      success: true,
+      emailCooldownMinutes: simulation.emailCooldownMinutes,
+      throttlingStatus,
+      totalThrottledAlerts: simulation.lastEmailSent.size,
+      message: 'Email throttling status retrieved'
+    });
+  } catch (error) {
+    console.error('Email status debug failed:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Email status debug failed',
+      error: error.message
+    });
+  }
+});
+
+// Force send email (bypass throttling for testing)
+app.post('/api/debug/force-email', async (req, res) => {
+  try {
+    const simulation = await initializeSensorSimulation();
+    
+    // Create a test reading that should trigger an alert
+    const testReading = {
+      sensorId: 'TEST_FORCE',
+      location: { village: 'Test Village', district: 'Test District' },
+      readings: {
+        ph: 9.8, // Critical - will definitely trigger alert
+        ecoli: 25, // Critical
+        turbidity: 25, // Critical
+        tds: 350,
+        temperature: 25,
+        dissolvedOxygen: 6.2,
+        flowRate: 1.5
+      }
+    };
+
+    // Clear any existing throttling for this test
+    const emailKey = `${testReading.sensorId}-critical`;
+    simulation.lastEmailSent.delete(emailKey);
+    
+    // Force analyze and send email
+    const alertDetails = simulation.detectAbnormalReadings(testReading);
+    console.log('🧪 Force email test - detected alerts:', alertDetails);
+    
+    if (alertDetails.length > 0) {
+      const result = await simulation.sendEmailAlert('critical', testReading, alertDetails);
+      res.json({
+        success: true,
+        message: 'Force email sent successfully',
+        alertsDetected: alertDetails.length,
+        emailResult: result
+      });
+    } else {
+      res.json({
+        success: false,
+        message: 'No alerts detected in test reading',
+        testReading
+      });
+    }
+  } catch (error) {
+    console.error('Force email failed:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Force email failed',
+      error: error.message
+    });
+  }
+});
+
 // Error handling
 app.use((err, req, res, next) => {
   console.error('Error:', err);

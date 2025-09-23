@@ -286,14 +286,18 @@ class WorkingSensorSimulation {
   }
 
   async sendEmailAlert(alertType, reading, alertDetails) {
+    console.log(`🔍 DEBUG: Starting sendEmailAlert for ${alertType} alert from ${reading.sensorId}`);
+    
     if (!this.transporter) {
       console.log("⚠️ Email transporter not configured");
-      return;
+      return { emailsSent: 0, error: "Email transporter not configured" };
     }
 
     try {
       // Fetch current government officials from Firebase
+      console.log(`🔍 DEBUG: Fetching government officials...`);
       const governmentOfficials = await this.fetchGovernmentOfficials();
+      console.log(`🔍 DEBUG: Found ${governmentOfficials.length} government officials`);
 
       // Determine which officials should receive this alert
       const alertTypeKey = alertType === 'critical' ? 'critical_alerts' : 'water_quality';
@@ -307,6 +311,8 @@ class WorkingSensorSimulation {
 
       // If no Firebase officials found, use all from fallback
       const emailRecipients = recipients.length > 0 ? recipients : governmentOfficials;
+      console.log(`🔍 DEBUG: Email recipients count: ${emailRecipients.length}`);
+      console.log(`🔍 DEBUG: Email recipients:`, emailRecipients.map(r => ({ name: r.name, email: r.email })));
 
       const subject = `🚨 ${alertType.toUpperCase()} Water Quality Alert - ${reading.location.village}`;
       
